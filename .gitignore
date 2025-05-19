@@ -1,0 +1,19 @@
+# Python
+backend/venv/
+backend/venv310/
+__pycache__/
+*.pyc
+
+# Node.js
+frontend/node_modules/
+frontend/.next/
+
+# Environment files
+*.env
+.env.*
+
+# OS files
+.DS_Store
+
+# Build artifacts
+*.log 
