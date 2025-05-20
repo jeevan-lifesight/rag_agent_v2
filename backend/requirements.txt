@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+python-dotenv
+qdrant-client
+sentence-transformers
+google-cloud-aiplatform
+google-auth
+google-generativeai
+gitpython
+tqdm
+langchain
+numpy
+openai 

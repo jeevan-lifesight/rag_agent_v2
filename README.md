@@ -90,6 +90,7 @@ npm run dev
 | QDRANT_COLLECTION       | Qdrant collection name (auto-set by model if blank)              | lifesight_miniLM              |
 | CHUNK_SIZE              | Chunk size for ingestion (characters)                            | 500                           |
 | CHUNK_OVERLAP           | Overlap between chunks (characters)                              | 100                           |
+| RAG_K                   | Number of context chunks retrieved from Qdrant for each query    | 3                             |
 | VERTEX_PROJECT          | GCP project for Vertex AI                                        | your-gcp-project-id           |
 | VERTEX_LOCATION         | GCP location for Vertex AI                                       | us-central1                   |
 | VERTEX_SA_PATH          | Path to Vertex AI service account JSON                           | path/to/vertex-sa.json        |
