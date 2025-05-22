@@ -10,4 +10,5 @@ gitpython
 tqdm
 langchain
 numpy
-openai 
+openai
+html2text 

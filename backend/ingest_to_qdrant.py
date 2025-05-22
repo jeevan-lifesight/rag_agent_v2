@@ -12,6 +12,8 @@ from qdrant_client.http import models as qdrant_models
 from sentence_transformers import SentenceTransformer
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import numpy as np
+import requests
+import html2text
 # Load embedding model from environment
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 # Dynamic Qdrant collection selection
@@ -34,6 +36,8 @@ REPO_URL = "https://github.com/anupn18/readme_lifesight"
 # Chunking parameters: configurable via environment variables
 CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", 500))
 CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", 50))
+EXTRA_DOCS_ENABLED = os.getenv("EXTRA_DOCS_ENABLED", "true").lower() == "true"
+EXTRA_DOCS_DIR = Path(__file__).parent / "extra_docs"
 
 
 def clone_or_update_repo(repo_url: str, dest: Path):
@@ -118,6 +122,52 @@ def get_embeddings(texts: List[str]) -> List[np.ndarray]:
         return get_hf_embedding(EMBEDDING_MODEL, texts)
 
 
+def download_google_doc_as_html(doc_id: str, token: str) -> str:
+    """
+    Download a Google Doc as HTML using the Google Drive API.
+    Args:
+        doc_id: The Google Doc ID.
+        token: OAuth2 access token with drive.readonly scope.
+    Returns:
+        HTML content as a string.
+    """
+    url = f"https://www.googleapis.com/drive/v3/files/{doc_id}/export?mimeType=text/html"
+    headers = {"Authorization": f"Bearer {token}"}
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()
+    return response.text
+
+
+def convert_html_to_markdown(html_content: str) -> str:
+    """Convert HTML content to markdown using html2text."""
+    h = html2text.HTML2Text()
+    h.ignore_links = False
+    return h.handle(html_content)
+
+
+def get_google_docs_markdown_files(doc_ids: list, token: str, tmp_dir: Path) -> list:
+    """
+    Download Google Docs, convert to markdown, and save as .md files in tmp_dir.
+    Returns list of Path objects to the markdown files.
+    """
+    md_paths = []
+    for doc_id in doc_ids:
+        html = download_google_doc_as_html(doc_id, token)
+        md = convert_html_to_markdown(html)
+        md_path = tmp_dir / f"google_doc_{doc_id}.md"
+        with open(md_path, "w", encoding="utf-8") as f:
+            f.write(md)
+        md_paths.append(md_path)
+    return md_paths
+
+
+def get_extra_markdown_files(extra_docs_dir: Path) -> List[Path]:
+    if not extra_docs_dir.exists():
+        print(f"Extra docs directory {extra_docs_dir} does not exist. Skipping.")
+        return []
+    return [p for p in extra_docs_dir.glob("*.md") if p.is_file()]
+
+
 def ingest():
     # 1. Clone or update repo
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -126,11 +176,44 @@ def ingest():
         # Search for markdown files in the entire repo, not just docs/METHODOLOGIES
         md_files = get_markdown_files(repo_dir)
         print(f"Found {len(md_files)} markdown files in {repo_dir}")
-        # 3. Chunk files
-        all_chunks = []
-        for md_file in md_files:
-            all_chunks.extend(chunk_markdown_file(md_file))
-        print(f"Total chunks to ingest: {len(all_chunks)}")
+        # --- Google Docs integration ---
+        GOOGLE_DOC_IDS = [
+            "1AvjkW7ODZfPHU80BHKhrk30HsPJm9mnG2I5xAjZH-Cs",
+            "1KenjwA02EVGUKtt9vuATlBSYmpFo8lWdMnYiwlsC3XE",
+            "1z5FgVUMauqYljWLLhzqu340K2v0ZO7aoQ8qz6HFKJHM",
+        ]
+        GOOGLE_API_TOKEN = os.getenv("GOOGLE_API_TOKEN")
+        google_md_files = []
+        if GOOGLE_API_TOKEN:
+            google_md_files = get_google_docs_markdown_files(GOOGLE_DOC_IDS, GOOGLE_API_TOKEN, Path(tmpdir))
+            print(f"Fetched and converted {len(google_md_files)} Google Docs to markdown.")
+            md_files.extend(google_md_files)
+        else:
+            print("GOOGLE_API_TOKEN not set. Skipping Google Docs ingestion.")
+        # --- Extra docs integration ---
+        extra_md_files = []
+        if EXTRA_DOCS_ENABLED:
+            extra_md_files = get_extra_markdown_files(EXTRA_DOCS_DIR)
+            print(f"Including {len(extra_md_files)} extra markdown files from {EXTRA_DOCS_DIR}.")
+            md_files.extend(extra_md_files)
+        else:
+            print("EXTRA_DOCS_ENABLED is False. Skipping extra docs.")
+        # 3. Chunk files (track per source)
+        repo_chunks = []
+        google_chunks = []
+        extra_chunks = []
+        for md_file in get_markdown_files(repo_dir):
+            repo_chunks.extend(chunk_markdown_file(md_file))
+        for md_file in google_md_files:
+            google_chunks.extend(chunk_markdown_file(md_file))
+        for md_file in extra_md_files:
+            extra_chunks.extend(chunk_markdown_file(md_file))
+        all_chunks = repo_chunks + google_chunks + extra_chunks
+        print("\n--- Chunk Summary ---")
+        print(f"Repo chunks: {len(repo_chunks)}")
+        print(f"Google Docs chunks: {len(google_chunks)}")
+        print(f"Extra docs chunks: {len(extra_chunks)}")
+        print(f"Total chunks to ingest: {len(all_chunks)}\n")
         # 4. Embed and upsert
         client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
         # Create collection if not exists

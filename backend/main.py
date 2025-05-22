@@ -13,6 +13,7 @@ from google.oauth2 import service_account
 import openai
 import numpy as np
 from config import EMBEDDING_MODEL, LLM_MODEL, K, VERTEX_PROJECT, VERTEX_LOCATION, VERTEX_SA_PATH, QDRANT_HOST, QDRANT_PORT, QDRANT_COLLECTION, LLM_PROVIDER
+from config import LLM_TEMPERATURE, LLM_TOP_P, LLM_MAX_TOKENS
 import google.generativeai as genai
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -122,15 +123,20 @@ def call_openai(prompt: str) -> str:
             {"role": "system", "content": "You are a helpful assistant for marketing measurement documentation."},
             {"role": "user", "content": prompt}
         ],
-        max_tokens=512,
-        temperature=0.2,
+        max_tokens=LLM_MAX_TOKENS,
+        temperature=LLM_TEMPERATURE,
+        top_p=LLM_TOP_P,
     )
     return response.choices[0].message.content.strip()
 
 def call_gemini(prompt: str) -> str:
     genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
     model = genai.GenerativeModel(LLM_MODEL)  # e.g., "gemini-pro"
-    response = model.generate_content(prompt)
+    response = model.generate_content(prompt, generation_config={
+        "temperature": LLM_TEMPERATURE,
+        "top_p": LLM_TOP_P,
+        "max_output_tokens": LLM_MAX_TOKENS,
+    })
     return response.text.strip()
 
 @app.post("/api/ask", response_model=AskResponse)

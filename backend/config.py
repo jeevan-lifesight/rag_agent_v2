@@ -18,4 +18,9 @@ VERTEX_SA_PATH = os.getenv("VERTEX_SA_PATH", "path/to/vertex-service-account.jso
 # Qdrant config
 QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT = int(os.getenv("QDRANT_PORT", 6333))
-QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "lifesight_marketing_measurements") 
+QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "lifesight_marketing_measurements")
+
+# LLM generation parameters
+LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", 0.2))
+LLM_TOP_P = float(os.getenv("LLM_TOP_P", 1.0))
+LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", 512)) 
