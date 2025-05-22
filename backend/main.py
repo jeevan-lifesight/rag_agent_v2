@@ -45,6 +45,14 @@ elif "mini" in EMBEDDING_MODEL.lower():
 else:
     QDRANT_COLLECTION = "lifesight_other"
 
+EXTRA_DOCS_ENABLED = os.getenv("EXTRA_DOCS_ENABLED", "true").lower() == "true"
+EXTRA_DOCS_DIR = os.path.join(os.path.dirname(__file__), "extra_docs")
+
+def get_extra_docs_files():
+    if not os.path.exists(EXTRA_DOCS_DIR):
+        return []
+    return [os.path.join(EXTRA_DOCS_DIR, f) for f in os.listdir(EXTRA_DOCS_DIR) if f.endswith(".md")]
+
 def get_vertex_embedding(text: str) -> np.ndarray:
     credentials = service_account.Credentials.from_service_account_file(VERTEX_SA_PATH)
     aiplatform.init(project=VERTEX_PROJECT, location=VERTEX_LOCATION, credentials=credentials)
@@ -78,17 +86,22 @@ def retrieve_chunks(query_vector: np.ndarray, k: int) -> List[dict]:
     results = client.search(
         collection_name=QDRANT_COLLECTION,
         query_vector=query_vector.tolist(),
-        limit=k,
+        limit=k * 2 if not EXTRA_DOCS_ENABLED else k,  # fetch more if filtering
     )
-    return [
-        {
-            "score": hit.score,
-            "text": hit.payload.get("text"),
-            "source": hit.payload.get("source"),
-            "chunk_id": hit.payload.get("chunk_id"),
-        }
-        for hit in results
-    ]
+    chunks = []
+    for hit in results:
+        source = hit.payload.get("source", "")
+        is_extra_doc = os.path.abspath(EXTRA_DOCS_DIR) in os.path.abspath(source)
+        if EXTRA_DOCS_ENABLED or not is_extra_doc:
+            chunks.append({
+                "score": hit.score,
+                "text": hit.payload.get("text"),
+                "source": source,
+                "chunk_id": hit.payload.get("chunk_id"),
+            })
+        if len(chunks) >= k:
+            break
+    return chunks
 
 def build_prompt(question: str, doc_snippets: List[str]) -> str:
     doc_snippets_str = "\n".join([
