@@ -31,6 +31,10 @@ LLM_MODEL=gpt-3.5-turbo           # or gemini-pro
 LLM_PROVIDER=openai               # or gemini
 GEMINI_API_KEY=your-gemini-key    # for Gemini
 OPENAI_API_KEY=your-openai-key    # for OpenAI
+LLM_TEMPERATURE=0.2               # (optional) LLM generation temperature
+LLM_TOP_P=1.0                     # (optional) LLM nucleus sampling
+LLM_MAX_TOKENS=512                # (optional) LLM max tokens
+EXTRA_DOCS_ENABLED=true           # (optional) Enable extra_docs ingestion/retrieval
 
 # Qdrant
 QDRANT_HOST=localhost
@@ -94,6 +98,15 @@ npm run dev
 | VERTEX_PROJECT          | GCP project for Vertex AI                                        | your-gcp-project-id           |
 | VERTEX_LOCATION         | GCP location for Vertex AI                                       | us-central1                   |
 | VERTEX_SA_PATH          | Path to Vertex AI service account JSON                           | path/to/vertex-sa.json        |
+| EXTRA_DOCS_ENABLED      | Enable ingestion and retrieval of extra documentation in backend/extra_docs/         | true/false (default: true)   |
+| LLM_TEMPERATURE         | Temperature for LLM generation (controls randomness)                                 | 0.2 (default), configurable  |
+| LLM_TOP_P               | Top-p (nucleus) sampling for LLM generation                                         | 1.0 (default), configurable  |
+| LLM_MAX_TOKENS          | Maximum tokens to generate in LLM responses                                         | 512 (default), configurable  |
+
+---
+
+**Note:**
+- `EXTRA_DOCS_ENABLED` controls whether markdown files in `backend/extra_docs` are included in both the ingestion (embedding) and retrieval (query) process. If set to `false`, these files are ignored for both embedding and answering queries. This is useful for toggling internal or draft documentation on or off without removing files.
 
 ---
 
