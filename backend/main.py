@@ -21,7 +21,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Or specify ["http://localhost:3000", "http://localhost:3001"] for more security
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -105,7 +105,7 @@ def retrieve_chunks(query_vector: np.ndarray, k: int) -> List[dict]:
 
 def build_prompt(question: str, doc_snippets: List[str]) -> str:
     doc_snippets_str = "\n".join([
-        f'  <snippet index="{i+1}">\n  {text}\n  </snippet>' for i, text in enumerate(doc_snippets)
+        f'  <snippet>\n  {text}\n  </snippet>' for text in doc_snippets
     ])
     prompt = f"""
 <prompt_instructions>
@@ -118,6 +118,7 @@ You are an AI assistant expert in our product documentation. Your goal is to ans
 - If the query is outside the scope of the documentation (e.g., harmful, unethical, requests personal opinions, unrelated topics), politely decline to answer.
 - Keep your answers concise and directly related to the documentation.
 - Format technical details like code snippets or parameter names clearly.
+- Do NOT reference snippet numbers or indices in your answer; answer naturally.
 </prompt_instructions>
 <documentation_snippets>
 {doc_snippets_str}

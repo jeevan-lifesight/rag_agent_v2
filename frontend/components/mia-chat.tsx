@@ -101,12 +101,12 @@ export const MiaChat = forwardRef((props, ref) => {
         status: "sent",
       }
       setMessages((prev: Message[]) => [
-        ...prev.map((m: Message) => (m.id === userMessage.id ? { ...m, status: "sent" } : m)),
+        ...prev.map((m: Message) => (m.id === userMessage.id ? { ...m, status: "sent" as const } : m)),
         assistantMessage,
       ])
     } catch (error) {
       console.error("Error sending message:", error)
-      setMessages((prev: Message[]) => prev.map((m: Message) => (m.id === userMessage.id ? { ...m, status: "cancelled" } : m)))
+      setMessages((prev: Message[]) => prev.map((m: Message) => (m.id === userMessage.id ? { ...m, status: "cancelled" as const } : m)))
     } finally {
       setIsThinking(false)
     }
@@ -114,7 +114,7 @@ export const MiaChat = forwardRef((props, ref) => {
 
   const handleCancelMessage = () => {
     setIsThinking(false)
-    setMessages((prev: Message[]) => prev.map((m: Message) => (m.status === "sending" ? { ...m, status: "cancelled" } : m)))
+    setMessages((prev: Message[]) => prev.map((m: Message) => (m.status === "sending" ? { ...m, status: "cancelled" as const } : m)))
   }
 
   useImperativeHandle(ref, () => ({
